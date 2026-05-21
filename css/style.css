@@ -98,7 +98,7 @@ button:hover {
 }
 
 #map {
-    flex: 1;
+    flex: 1;400px; width: 100%;
 }
 
 .alert-table-panel {
