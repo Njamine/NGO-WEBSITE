@@ -168,22 +168,15 @@ async function initDashboard() {
         });
     }
 
-    async function fetchSummary() {
-        try {
-            const query = buildQuery();
-            const response = await fetch(`/api/summary?${query}`);
-            const data = await response.json();
-            document.getElementById("total-alerts").innerText = data.total_alerts ?? 0;
-            document.getElementById("total-area").innerText = Number(
-                data.total_area_ha ?? 0
-            ).toFixed(2);
-            document.getElementById("avg-confidence").innerText = (
-                Number(data.avg_confidence ?? 0) * 100
-            ).toFixed(0);
-        } catch (error) {
-            console.error("Failed to fetch summary:", error);
-        }
-    }
+ async function fetchSummary() {
+    const features = window.__allAlerts || [];
+    const total = features.length;
+    const area = features.reduce((s, f) => s + Number(f.properties.area_ha || 0), 0);
+    const conf = total ? features.reduce((s, f) => s + Number(f.properties.confidence_score || 0), 0) / total : 0;
+    document.getElementById("total-alerts").innerText = total;
+    document.getElementById("total-area").innerText = area.toFixed(2);
+    document.getElementById("avg-confidence").innerText = (conf * 100).toFixed(0);
+}
 
     function setDefaultDates() {
         const end = new Date();
