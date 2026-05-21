@@ -112,23 +112,40 @@ async function initDashboard() {
     }
 
     async function fetchAlerts() {
-        try {
-            const query = buildQuery();
-            const response = await fetch(`/api/alerts?${query}`);
-            const data = await response.json();
-            alertsLayer.clearLayers();
-            alertsLayer.addData(data);
-            updateTable(data.features || []);
+    try {
+        const response = await fetch("./data/alerts.json", { cache: "no-store" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        const all = await response.json();
 
-            if ((data.features || []).length > 0) {
-                map.fitBounds(alertsLayer.getBounds(), { padding: [20, 20] });
-            }
-            document.getElementById("update-time").innerText = new Date().toLocaleString();
-        } catch (error) {
-            console.error("Failed to fetch alerts:", error);
+        // client-side filtering (since there's no backend)
+        const startDate = document.getElementById("start-date").value;
+        const endDate = document.getElementById("end-date").value;
+        const sev = selectedValues("severity-filter").split(",").filter(Boolean);
+        const cause = selectedValues("cause-filter").split(",").filter(Boolean);
+
+        const features = (all.features || []).filter((f) => {
+            const p = f.properties;
+            if (startDate && p.date_detected < startDate) return false;
+            if (endDate && p.date_detected > endDate) return false;
+            if (sev.length && !sev.includes((p.severity || "").toLowerCase())) return false;
+            if (cause.length && !cause.includes(p.likely_cause)) return false;
+            return true;
+        });
+
+        const filtered = { type: "FeatureCollection", features };
+        alertsLayer.clearLayers();
+        alertsLayer.addData(filtered);
+        updateTable(features);
+
+        if (features.length > 0) {
+            map.fitBounds(alertsLayer.getBounds(), { padding: [20, 20] });
         }
+        document.getElementById("update-time").innerText = new Date().toLocaleString();
+        window.__allAlerts = features; // for summary
+    } catch (error) {
+        console.error("Failed to fetch alerts:", error);
     }
-
+}
     function updateTable(features) {
         const tbody = document.querySelector("#alert-table tbody");
         tbody.innerHTML = "";
